@@ -1,0 +1,3 @@
+https://github.com/rhasspy/piper/blob/master/VOICES.md
+
+download any voice you wish to use from here

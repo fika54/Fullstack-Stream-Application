@@ -1,0 +1,37 @@
+.pick-chatter-container {
+    padding: 1rem;
+}
+
+.pick-chatter-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.pick-chatter-label {
+    margin-right: 0.5rem;
+    font-weight: 500;
+}
+
+.pick-chatter-input {
+    border-radius: 0.25rem;
+    border: 1px solid #ccc;
+    padding: 0.25rem 0.5rem;
+}
+
+.pick-chatter-btn {
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    border: none;
+    background: #6366f1;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.pick-chatter-btn:hover {
+    background: #4f46e5;
+}
