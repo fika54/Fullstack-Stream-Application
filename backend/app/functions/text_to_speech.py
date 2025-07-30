@@ -11,12 +11,6 @@ import time
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "voiceModels")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "chatMsgOutput")
 
-# List your available models here (or scan the folder)
-PIPER_MODELS = [
-    "en_GB-cori-high.onnx",
-    "en_US-ryan-high.onnx",
-    "jenny.onnx"
-]
 
 class TTSManager:
     def __init__(self):
@@ -46,7 +40,7 @@ class TTSManager:
 
         # Choose a model
         if voice == "random":
-            model = random.choice(list(self.voices.keys()))
+            model = random.choice(self.voices)
         elif voice in self.voices:
             model = voice
         else:

@@ -1,91 +1,93 @@
 import random
 import time
 
-# Pools of users with last seen timestamps
-TWITCH_POOL = {}  # username: last_seen_timestamp
-TIKTOK_POOL = {}
-
-# Keep track of picked users
+# Make picked lists global
 PICKED_TWITCH = set()
 PICKED_TIKTOK = set()
 
-# Exported selected users (for use in games, overlays, etc.)
-LAST_SELECTED = {
-    "twitch": None,
-    "tiktok": None,
-    "either": None
-}
+class RandomPool:
+    def __init__(self, pool_timeout=60):
+        # Pools of users with last seen timestamps
+        self.TWITCH_POOL = {}  # username: last_seen_timestamp
+        self.TIKTOK_POOL = {}
 
-POOL_TIMEOUT = 60  # seconds
+        # Exported selected users (for use in games, overlays, etc.)
+        self.LAST_SELECTED = {
+            "twitch": None,
+            "tiktok": None,
+            "either": None
+        }
 
-# ---- ADD CHATTERS ----
+        self.POOL_TIMEOUT = pool_timeout
 
-def add_chatter(username: str, platform: str):
-    username = username.strip().lower()
-    now = time.time()
+    # ---- ADD CHATTERS ----
 
-    if platform == 'twitch':
-        TWITCH_POOL[username] = now
-    elif platform == 'tiktok':
-        TIKTOK_POOL[username] = now
+    def add_chatter(self, username: str, platform: str):
+        username = username.strip().lower()
+        now = time.time()
 
-def _prune_pool(pool: dict):
-    now = time.time()
-    to_remove = [user for user, ts in pool.items() if now - ts > POOL_TIMEOUT]
-    for user in to_remove:
-        del pool[user]
-        PICKED_TWITCH.discard(user)
-        PICKED_TIKTOK.discard(user)
+        if platform == 'twitch':
+            self.TWITCH_POOL[username] = now
+        elif platform == 'tiktok':
+            self.TIKTOK_POOL[username] = now
 
-# ---- PICKERS ----
+    def _prune_pool(self, pool: dict):
+        now = time.time()
+        to_remove = [user for user, ts in pool.items() if now - ts > self.POOL_TIMEOUT]
+        for user in to_remove:
+            del pool[user]
+            # PICKED_TWITCH.discard(user)
+            # PICKED_TIKTOK.discard(user)
 
-def pick_random_twitch():
-    _prune_pool(TWITCH_POOL)
-    available = set(TWITCH_POOL) - PICKED_TWITCH
-    if not available:
-        return None
+    # ---- PICKERS ----
 
-    chosen = random.choice(list(available))
-    PICKED_TWITCH.add(chosen)
-    LAST_SELECTED["twitch"] = chosen
-    return chosen
+    def pick_random_twitch(self):
+        self._prune_pool(self.TWITCH_POOL)
+        available = set(self.TWITCH_POOL) - PICKED_TWITCH
+        if not available:
+            return None
 
-def pick_random_tiktok():
-    _prune_pool(TIKTOK_POOL)
-    available = set(TIKTOK_POOL) - PICKED_TIKTOK
-    if not available:
-        return None
-
-    chosen = random.choice(list(available))
-    PICKED_TIKTOK.add(chosen)
-    LAST_SELECTED["tiktok"] = chosen
-    return chosen
-
-def pick_random_either():
-    _prune_pool(TWITCH_POOL)
-    _prune_pool(TIKTOK_POOL)
-    all_available = (set(TWITCH_POOL) | set(TIKTOK_POOL)) - (PICKED_TWITCH | PICKED_TIKTOK)
-    if not all_available:
-        return None
-
-    chosen = random.choice(list(all_available))
-
-    if chosen in TWITCH_POOL:
+        chosen = random.choice(list(available))
         PICKED_TWITCH.add(chosen)
-    else:
+        self.LAST_SELECTED["twitch"] = chosen
+        return chosen
+
+    def pick_random_tiktok(self):
+        self._prune_pool(self.TIKTOK_POOL)
+        available = set(self.TIKTOK_POOL) - PICKED_TIKTOK
+        if not available:
+            return None
+
+        chosen = random.choice(list(available))
         PICKED_TIKTOK.add(chosen)
+        self.LAST_SELECTED["tiktok"] = chosen
+        return chosen
 
-    LAST_SELECTED["either"] = chosen
-    return chosen
+    def pick_random_either(self):
+        self._prune_pool(self.TWITCH_POOL)
+        self._prune_pool(self.TIKTOK_POOL)
+        all_available = (set(self.TWITCH_POOL) | set(self.TIKTOK_POOL)) - (PICKED_TWITCH | PICKED_TIKTOK)
+        if not all_available:
+            return None
 
-# ---- RESET FUNCTIONS ----
+        chosen = random.choice(list(all_available))
 
-def reset_picks():
-    PICKED_TWITCH.clear()
-    PICKED_TIKTOK.clear()
-    LAST_SELECTED.update({"twitch": None, "tiktok": None, "either": None})
+        if chosen in self.TWITCH_POOL:
+            PICKED_TWITCH.add(chosen)
+        else:
+            PICKED_TIKTOK.add(chosen)
 
-def clear_all():
-    TWITCH_POOL.clear()
-    TIKTOK_POOL.clear()
-    reset_picks()
+        self.LAST_SELECTED["either"] = chosen
+        return chosen
+
+    # ---- RESET FUNCTIONS ----
+
+    def reset_picks(self):
+        PICKED_TWITCH.clear()
+        PICKED_TIKTOK.clear()
+        self.LAST_SELECTED.update({"twitch": None, "tiktok": None, "either": None})
+
+    def clear_all(self):
+        self.TWITCH_POOL.clear()
+        self.TIKTOK_POOL.clear()
+        self.reset_picks()

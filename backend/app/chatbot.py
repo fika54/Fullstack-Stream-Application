@@ -6,7 +6,7 @@ from twitchAPI.oauth import UserAuthenticator
 from twitchAPI.twitch import Twitch
 import app.MessageSort as MessageSort
 import random
-import app.confidential.dontleak as dontleak
+import app.functions.dontleak as dontleak
 import asyncio
 
 
