@@ -8,6 +8,9 @@ OBS_MANAGER = OBSWebsocketsManager()
 CHARACTER_1 = {}  # {username: platform}
 CHARACTER_2 = {}
 
+CHARACTER_1_VOICE_STYLE = "af_bella"
+CHARACTER_2_VOICE_STYLE = "am_michael"
+
 CHARACTER_POOL_1 = RandomPool()
 CHARACTER_POOL_2 = RandomPool()
 
@@ -80,6 +83,21 @@ def pick_character_2(platform: str):
     return username
 
 
+def update_character_voice_style(character_number: int, voice_style: str):
+    """
+    Updates the voice style for the given character number.
+    """
+    global CHARACTER_1_VOICE_STYLE, CHARACTER_2_VOICE_STYLE
+    if character_number == 1:
+        CHARACTER_1_VOICE_STYLE = voice_style
+        VOICE_MANAGER.update_voice_name("1", voice_style)
+        print(f"Updated Character 1 voice style to {voice_style}")
+    elif character_number == 2:
+        CHARACTER_2_VOICE_STYLE = voice_style
+        VOICE_MANAGER.update_voice_name("2", voice_style)
+        print(f"Updated Character 2 voice style to {voice_style}")
+
+
 def speak_character_1_message(username: str, platform: str, message: str):
     """
     Speaks the given message using Character 1's voice and updates OBS text.
@@ -118,3 +136,45 @@ def handle_chatter_message(username: str, platform: str, message: str):
         speak_character_2_message(username, platform, message)
         return True
     return False
+
+
+def remove_character_1():
+    """
+    Removes Character 1, resets OBS name to 'Character 1', and clears CHARACTER_1.
+    """
+    global CHARACTER_1
+    CHARACTER_1 = {}
+    OBS_MANAGER.set_text("Character 1 Name", "Character 1")
+    OBS_MANAGER.set_text("Character 1 Text", "")
+
+
+def remove_character_2():
+    """
+    Removes Character 2, resets OBS name to 'Character 2', and clears CHARACTER_2.
+    """
+    global CHARACTER_2
+    CHARACTER_2 = {}
+    OBS_MANAGER.set_text("Character 2 Name", "Character 2")
+    OBS_MANAGER.set_text("Character 2 Text", "")
+
+
+def reset_all_pools():
+    """
+    Resets the picked pools and the current pool of chatters for both character pools.
+    """
+    CHARACTER_POOL_1.clear_all()
+    CHARACTER_POOL_2.clear_all()
+
+
+def reset_character_1_pool():
+    """
+    Resets the picked pool and the current pool of chatters for Character 1 only.
+    """
+    CHARACTER_POOL_1.clear_all()
+
+
+def reset_character_2_pool():
+    """
+    Resets the picked pool and the current pool of chatters for Character 2 only.
+    """
+    CHARACTER_POOL_2.clear_all()

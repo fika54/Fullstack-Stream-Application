@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import overlay
+from app.routes import app_router
 import asyncio
 from app.chatbot import run_twitch_bot, run_tiktok_bot
 from contextlib import asynccontextmanager
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(overlay.router)
+app.include_router(app_router.router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,29 +1,106 @@
-import { useState } from "react";
-import axios from "axios";
+import { useState, useRef } from "react";
 import "../FunctionStylesheet/PickChatter.css";
 
-function PickChatter() {
+interface PickChatterProps {
+    characterNumber: number;
+}
+
+const VOICE_STYLES = [
+    'af', 'af_bella', 'af_nicole', 'af_sarah', 'af_sky',
+    'am_adam', 'am_michael', 'bf_emma', 'bf_isabella',
+    'bm_george', 'bm_lewis'
+];
+
+function PickChatter({ characterNumber }: PickChatterProps) {
     const [platform, setPlatform] = useState("either");
     const [pickedChatter, setPickedChatter] = useState<string | null>(null);
     const [manualChatter, setManualChatter] = useState<string>("");
+    const [voiceStyle, setVoiceStyle] = useState<string>(VOICE_STYLES[0]);
+    const wsPickRef = useRef<WebSocket | null>(null);
+    const wsSetRef = useRef<WebSocket | null>(null);
+    const wsResetRef = useRef<WebSocket | null>(null);
+    const wsVoiceRef = useRef<WebSocket | null>(null);
 
-    const pickRandomChatter = async () => {
-        try {
-            const res = await axios.get(`http://localhost:8000/pick_random/${platform}`);
-            setPickedChatter(res.data.chatter || "No chatter found");
-        } catch {
+    // Pick random chatter using websocket
+    const pickRandomChatter = () => {
+        if (wsPickRef.current) wsPickRef.current.close();
+        const ws = new WebSocket("ws://localhost:8000/ws/pick_character");
+        wsPickRef.current = ws;
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ character_number: characterNumber, platform }));
+        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            setPickedChatter(data.username || "No chatter found");
+            ws.close();
+        };
+        ws.onerror = () => {
             setPickedChatter("Error picking chatter");
-        }
+            ws.close();
+        };
     };
 
-    const setManualPickedChatter = async () => {
+    // Set manual chatter using websocket
+    const setManualPickedChatter = () => {
         if (!manualChatter.trim()) return;
-        setPickedChatter(manualChatter);
-        await axios.post("http://localhost:8000/set_picked_chatter", {
-            platform,
-            chatter: manualChatter
-        });
+        if (wsSetRef.current) wsSetRef.current.close();
+        const ws = new WebSocket("ws://localhost:8000/ws/set_character");
+        wsSetRef.current = ws;
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ character_number: characterNumber, username: manualChatter, platform }));
+        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            setPickedChatter(data.username || "No chatter found");
+            ws.close();
+        };
+        ws.onerror = () => {
+            setPickedChatter("Error setting chatter");
+            ws.close();
+        };
         setManualChatter("");
+    };
+
+    // Reset chatter using websocket
+    const resetChatter = () => {
+        if (wsResetRef.current) wsResetRef.current.close();
+        const ws = new WebSocket("ws://localhost:8000/ws/reset_character");
+        wsResetRef.current = ws;
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ character_number: characterNumber }));
+        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (
+                (characterNumber === 1 && data.status === "character_1_reset") ||
+                (characterNumber === 2 && data.status === "character_2_reset")
+            ) {
+                setPickedChatter(null);
+            }
+            ws.close();
+        };
+        ws.onerror = () => {
+            setPickedChatter("Error resetting chatter");
+            ws.close();
+        };
+    };
+
+    // Set voice style using websocket
+    const setVoiceStyleWS = (style: string) => {
+        setVoiceStyle(style);
+        if (wsVoiceRef.current) wsVoiceRef.current.close();
+        const ws = new WebSocket("ws://localhost:8000/ws/set_voice_style");
+        wsVoiceRef.current = ws;
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ character_number: characterNumber, voice_style: style }));
+        };
+        ws.onmessage = (event) => {
+            // Optionally handle confirmation
+            ws.close();
+        };
+        ws.onerror = () => {
+            ws.close();
+        };
     };
 
     return (
@@ -52,6 +129,21 @@ function PickChatter() {
                     placeholder="Enter username"
                 />
                 <button onClick={setManualPickedChatter} className="pick-chatter-btn">Set Chatter</button>
+            </div>
+            <div className="pick-chatter-row">
+                <label className="pick-chatter-label">Voice Style:</label>
+                <select
+                    value={voiceStyle}
+                    onChange={e => setVoiceStyleWS(e.target.value)}
+                    className="pick-chatter-input"
+                >
+                    {VOICE_STYLES.map(style => (
+                        <option key={style} value={style}>{style}</option>
+                    ))}
+                </select>
+            </div>
+            <div className="pick-chatter-row">
+                <button onClick={resetChatter} className="pick-chatter-btn" style={{background: "#e11d48"}}>Reset Chatter</button>
             </div>
             {pickedChatter && (
                 <div className="mt-2">

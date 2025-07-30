@@ -23,7 +23,7 @@ class RandomPool:
     # ---- ADD CHATTERS ----
 
     def add_chatter(self, username: str, platform: str):
-        username = username.strip().lower()
+        username = username.strip()
         now = time.time()
 
         if platform == 'twitch':
