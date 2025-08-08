@@ -5,176 +5,141 @@ from app.functions.obs_websocket import OBSWebsocketsManager
 VOICE_MANAGER = VoiceManager()
 OBS_MANAGER = OBSWebsocketsManager()
 
-CHARACTER_1 = {}  # {username: platform}
-CHARACTER_2 = {}
+MUTE_TTS = False  # Set to True to mute TTS audio
 
-CHARACTER_1_VOICE_STYLE = "af_bella"
-CHARACTER_2_VOICE_STYLE = "am_michael"
+CHARACTERS = {}  # {number: {username: platform}}
+CHARACTER_VOICE_STYLES = {}  # {number: voice_style}
+CHARACTER_POOLS = {}  # {number: RandomPool}
 
-CHARACTER_POOL_1 = RandomPool()
-CHARACTER_POOL_2 = RandomPool()
+DEFAULT_VOICE_STYLES = [
+    'af_bella', 'am_michael', 'af_nicole', 'af_sarah', 'af_sky',
+    'am_adam', 'bf_emma', 'bf_isabella', 'bm_george', 'bm_lewis'
+]
 
-
-def set_character_1(username: str, platform: str):
-    global CHARACTER_1
-    CHARACTER_1 = {username: platform}
-    print(f"Character 1 set to: {CHARACTER_1}")
-    OBS_MANAGER.set_text("Character 1 Name", username)
+MAX_CHARACTERS = 10
 
 
-def set_character_2(username: str, platform: str):
-    global CHARACTER_2
-    CHARACTER_2 = {username: platform}
-    print(f"Character 2 set to: {CHARACTER_2}")
-    OBS_MANAGER.set_text("Character 2 Name", username)
+def ensure_character(number):
+    if number < 1 or number > MAX_CHARACTERS:
+        raise ValueError(f"Character number must be between 1 and {MAX_CHARACTERS}")
+    if number not in CHARACTERS:
+        CHARACTERS[number] = {}
+    if number not in CHARACTER_VOICE_STYLES:
+        # Cycle through defaults if more than available
+        CHARACTER_VOICE_STYLES[number] = DEFAULT_VOICE_STYLES[(number-1) % len(DEFAULT_VOICE_STYLES)]
+    if number not in CHARACTER_POOLS:
+        CHARACTER_POOLS[number] = RandomPool()
 
 
-def pick_character_1(platform: str):
-    """
-    Picks a random character from CHARACTER_POOL_1 based on the platform.
-    platform: "twitch", "tiktok", or "either"
-    """
+def set_character(number: int, username: str, platform: str):
+    ensure_character(number)
+    CHARACTERS[number] = {username: platform}
+    print(f"Character {number} set to: {CHARACTERS[number]}")
+    OBS_MANAGER.set_text(f"Character {number} Name", username)
+    OBS_MANAGER.set_source_visibility("Chat Conference",f"Character {number} Scene", True)
+    OBS_MANAGER.set_source_visibility("Voting board",f"Vote {number}", True)
+
+
+def pick_character(number: int, platform: str):
+    ensure_character(number)
+    pool = CHARACTER_POOLS[number]
     if platform == "twitch":
-        username = CHARACTER_POOL_1.pick_random_twitch()
+        username = pool.pick_random_twitch()
         actual_platform = "twitch"
     elif platform == "tiktok":
-        username = CHARACTER_POOL_1.pick_random_tiktok()
+        username = pool.pick_random_tiktok()
         actual_platform = "tiktok"
     else:
-        username = CHARACTER_POOL_1.pick_random_either()
-        # Determine actual platform
-        if username in CHARACTER_POOL_1.TWITCH_POOL:
+        username = pool.pick_random_either()
+        if username in pool.TWITCH_POOL:
             actual_platform = "twitch"
-        elif username in CHARACTER_POOL_1.TIKTOK_POOL:
+        elif username in pool.TIKTOK_POOL:
             actual_platform = "tiktok"
         else:
             actual_platform = None
     if username and actual_platform:
-        set_character_1(username, actual_platform)
+        set_character(number, username, actual_platform)
     else:
-        print("No available character to pick for Character 1.")
+        print(f"No available character to pick for Character {number}.")
     return username
 
 
-def pick_character_2(platform: str):
-    """
-    Picks a random character from CHARACTER_POOL_2 based on the platform.
-    platform: "twitch", "tiktok", or "either"
-    """
-    if platform == "twitch":
-        username = CHARACTER_POOL_2.pick_random_twitch()
-        actual_platform = "twitch"
-    elif platform == "tiktok":
-        username = CHARACTER_POOL_2.pick_random_tiktok()
-        actual_platform = "tiktok"
+def update_character_voice_style(number: int, voice_style: str):
+    ensure_character(number)
+    CHARACTER_VOICE_STYLES[number] = voice_style
+    print(f"Updated Character {number} voice style to {voice_style}")
+
+
+def speak_character_message(number: int, username: str, platform: str, message: str):
+    ensure_character(number)
+    char = CHARACTERS.get(number, {})
+    if char and username in char and char[username] == platform:
+        OBS_MANAGER.set_text(f"Character {number} Text", message)
+
+        if not MUTE_TTS:
+            print(f"Speaking as Character {number} ({username}, {platform}): {message}")
+            voice_style = CHARACTER_VOICE_STYLES.get(number, DEFAULT_VOICE_STYLES[0])
+            VOICE_MANAGER.text_to_audio(message, number, voice_style)
     else:
-        username = CHARACTER_POOL_2.pick_random_either()
-        # Determine actual platform
-        if username in CHARACTER_POOL_2.TWITCH_POOL:
-            actual_platform = "twitch"
-        elif username in CHARACTER_POOL_2.TIKTOK_POOL:
-            actual_platform = "tiktok"
-        else:
-            actual_platform = None
-    if username and actual_platform:
-        set_character_2(username, actual_platform)
-    else:
-        print("No available character to pick for Character 2.")
-    return username
-
-
-def update_character_voice_style(character_number: int, voice_style: str):
-    """
-    Updates the voice style for the given character number.
-    """
-    global CHARACTER_1_VOICE_STYLE, CHARACTER_2_VOICE_STYLE
-    if character_number == 1:
-        CHARACTER_1_VOICE_STYLE = voice_style
-        VOICE_MANAGER.update_voice_name("1", voice_style)
-        print(f"Updated Character 1 voice style to {voice_style}")
-    elif character_number == 2:
-        CHARACTER_2_VOICE_STYLE = voice_style
-        VOICE_MANAGER.update_voice_name("2", voice_style)
-        print(f"Updated Character 2 voice style to {voice_style}")
-
-
-def speak_character_1_message(username: str, platform: str, message: str):
-    """
-    Speaks the given message using Character 1's voice and updates OBS text.
-    Only if both username and platform match Character 1.
-    """
-    if CHARACTER_1 and username in CHARACTER_1 and CHARACTER_1[username] == platform:
-        OBS_MANAGER.set_text("Character 1 Text", message)
-        print(f"Speaking as Character 1 ({username}, {platform}): {message}")
-        VOICE_MANAGER.text_to_audio(message, user_number="1")
-    else:
-        print("Character 1 is not set or username/platform mismatch.")
-
-
-def speak_character_2_message(username: str, platform: str, message: str):
-    """
-    Speaks the given message using Character 2's voice and updates OBS text.
-    Only if both username and platform match Character 2.
-    """
-    if CHARACTER_2 and username in CHARACTER_2 and CHARACTER_2[username] == platform:
-        OBS_MANAGER.set_text("Character 2 Text", message)
-        print(f"Speaking as Character 2 ({username}, {platform}): {message}")
-        VOICE_MANAGER.text_to_audio(message, user_number="2")
-    else:
-        print("Character 2 is not set or username/platform mismatch.")
+        print(f"Character {number} is not set or username/platform mismatch.")
 
 
 def handle_chatter_message(username: str, platform: str, message: str):
-    """
-    Checks if the username and platform match Character 1 or Character 2 and makes the respective character speak.
-    Returns True if a character spoke, False otherwise.
-    """
-    if CHARACTER_1 and username in CHARACTER_1 and CHARACTER_1[username] == platform:
-        speak_character_1_message(username, platform, message)
-        return True
-    if CHARACTER_2 and username in CHARACTER_2 and CHARACTER_2[username] == platform:
-        speak_character_2_message(username, platform, message)
-        return True
+    for number, char in CHARACTERS.items():
+        if char and username in char and char[username] == platform:
+            speak_character_message(number, username, platform, message)
+            return True
     return False
 
 
-def remove_character_1():
-    """
-    Removes Character 1, resets OBS name to 'Character 1', and clears CHARACTER_1.
-    """
-    global CHARACTER_1
-    CHARACTER_1 = {}
-    OBS_MANAGER.set_text("Character 1 Name", "Character 1")
-    OBS_MANAGER.set_text("Character 1 Text", "")
+def remove_character(number: int):
+    ensure_character(number)
+    CHARACTERS[number] = {}
+    OBS_MANAGER.set_text(f"Character {number} Name", f"Deceased")
+    OBS_MANAGER.set_text(f"Character {number} Text", "")
+    OBS_MANAGER.set_source_visibility("Chat Conference",f"Character {number} Scene", False)
+    OBS_MANAGER.set_source_visibility("Voting board",f"Vote {number}", False)
 
 
-def remove_character_2():
-    """
-    Removes Character 2, resets OBS name to 'Character 2', and clears CHARACTER_2.
-    """
-    global CHARACTER_2
-    CHARACTER_2 = {}
-    OBS_MANAGER.set_text("Character 2 Name", "Character 2")
-    OBS_MANAGER.set_text("Character 2 Text", "")
+def reset_character_pool(number: int):
+    ensure_character(number)
+    CHARACTER_POOLS[number].clear_all()
 
 
 def reset_all_pools():
-    """
-    Resets the picked pools and the current pool of chatters for both character pools.
-    """
-    CHARACTER_POOL_1.clear_all()
-    CHARACTER_POOL_2.clear_all()
+    for pool in CHARACTER_POOLS.values():
+        pool.clear_all()
 
 
-def reset_character_1_pool():
+def add_chatter_to_character_pool(number: int, username: str, platform: str):
     """
-    Resets the picked pool and the current pool of chatters for Character 1 only.
+    Adds a chatter to the specified character's pool.
     """
-    CHARACTER_POOL_1.clear_all()
+    ensure_character(number)
+    CHARACTER_POOLS[number].add_chatter(username, platform)
+    print(f"Added {username} ({platform}) to Character {number} pool.")
 
+def mute_character_tts(mute: bool):
+    """
+    Mutes or unmutes the TTS audio.
+    """
+    global MUTE_TTS
+    MUTE_TTS = mute
+    status = "muted" if mute else "unmuted"
+    print(f"TTS audio is now {status}.")
+    return status
 
-def reset_character_2_pool():
+def message_as_character(number: int, message: str, alias: str):
     """
-    Resets the picked pool and the current pool of chatters for Character 2 only.
+    Sends a message as the specified character.
     """
-    CHARACTER_POOL_2.clear_all()
+    try:
+        OBS_MANAGER.set_source_visibility("Chat Conference",f"Character {number} Scene", True)
+        ensure_character(number)
+        OBS_MANAGER.set_text(f"Character {number} Name", alias)
+        voice_style = CHARACTER_VOICE_STYLES.get(number, DEFAULT_VOICE_STYLES[0])
+        
+        OBS_MANAGER.set_text(f"Character {number} Text", message)
+        VOICE_MANAGER.text_to_audio(message, number, voice_style)
+    except Exception as e:
+        print(f"Error sending message as character {number}: {e}")

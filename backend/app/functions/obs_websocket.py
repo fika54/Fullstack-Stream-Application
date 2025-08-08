@@ -1,7 +1,7 @@
 import time
 import sys
 from obswebsocket import obsws, requests  # noqa: E402
-import app.functions.dontleak as dontleak
+import app.confidentials.dontleak as dontleak
 
 ##########################################################
 ##########################################################

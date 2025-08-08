@@ -9,7 +9,7 @@ class AudioManager:
     def __init__(self):
         pygame.mixer.init()
 
-    def play_audio(self, file_path, sleep_during_playback=True, delete_file=False, play_using_music=True):
+    def play_audio(self, file_path, sleep_during_playback=True, delete_file=False, play_using_music=False):
         """
         Parameters:
         file_path (str): path to the audio file
