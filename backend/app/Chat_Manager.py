@@ -1,9 +1,11 @@
 from app.functions.RandChatters import RandomPool
 from app.functions.voice_manager import VoiceManager
 from app.functions.obs_websocket import OBSWebsocketsManager
+from app.functions.audio_player import AudioManager
 
 VOICE_MANAGER = VoiceManager()
 OBS_MANAGER = OBSWebsocketsManager()
+AUDIO_MANAGER = AudioManager()
 
 MUTE_TTS = False  # Set to True to mute TTS audio
 
@@ -31,7 +33,7 @@ def ensure_character(number):
         CHARACTER_POOLS[number] = RandomPool()
 
 
-def set_character(number: int, username: str, platform: str):
+async def set_character(number: int, username: str, platform: str):
     ensure_character(number)
     CHARACTERS[number] = {username: platform}
     print(f"Character {number} set to: {CHARACTERS[number]}")
@@ -40,7 +42,7 @@ def set_character(number: int, username: str, platform: str):
     OBS_MANAGER.set_source_visibility("Voting board",f"Vote {number}", True)
 
 
-def pick_character(number: int, platform: str):
+async def pick_character(number: int, platform: str):
     ensure_character(number)
     pool = CHARACTER_POOLS[number]
     if platform == "twitch":
@@ -58,13 +60,13 @@ def pick_character(number: int, platform: str):
         else:
             actual_platform = None
     if username and actual_platform:
-        set_character(number, username, actual_platform)
+        await set_character(number, username, actual_platform)
     else:
         print(f"No available character to pick for Character {number}.")
     return username
 
 
-def update_character_voice_style(number: int, voice_style: str):
+async def update_character_voice_style(number: int, voice_style: str):
     ensure_character(number)
     CHARACTER_VOICE_STYLES[number] = voice_style
     print(f"Updated Character {number} voice style to {voice_style}")
@@ -92,16 +94,17 @@ def handle_chatter_message(username: str, platform: str, message: str):
     return False
 
 
-def remove_character(number: int):
+async def remove_character(number: int):
     ensure_character(number)
     CHARACTERS[number] = {}
     OBS_MANAGER.set_text(f"Character {number} Name", f"Deceased")
     OBS_MANAGER.set_text(f"Character {number} Text", "")
     OBS_MANAGER.set_source_visibility("Chat Conference",f"Character {number} Scene", False)
     OBS_MANAGER.set_source_visibility("Voting board",f"Vote {number}", False)
+    AUDIO_MANAGER.play_audio("app/Sound effects/gun_shot.mp3", False, False, False)
 
 
-def reset_character_pool(number: int):
+async def reset_character_pool(number: int):
     ensure_character(number)
     CHARACTER_POOLS[number].clear_all()
 
@@ -119,12 +122,13 @@ def add_chatter_to_character_pool(number: int, username: str, platform: str):
     CHARACTER_POOLS[number].add_chatter(username, platform)
     print(f"Added {username} ({platform}) to Character {number} pool.")
 
-def mute_character_tts(mute: bool):
+async def mute_character_tts(mute: bool):
     """
     Mutes or unmutes the TTS audio.
     """
     global MUTE_TTS
     MUTE_TTS = mute
+    VOICE_MANAGER.reset()  # Clear any queued TTS jobs
     status = "muted" if mute else "unmuted"
     print(f"TTS audio is now {status}.")
     return status
